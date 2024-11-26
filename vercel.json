@@ -11,5 +11,19 @@
       "src":"/(.*)",
       "dest":"/"
     }
+  ],
+  "env": {
+    "DB_HOST": "api-rede-cocial.internal",
+    "DB_USER": "postgres",
+    "DB_PASSWORD": "FrrmjuthRtfqDVa",
+    "DB_PORT": "5433",
+    "DB_URL": "postgres://postgres:FrrmjuthRtfqDVa@api-rede-cocial.flycast:5432"
+  },
+  "redirects": [
+    {
+      "source": "/old-page",
+      "destination": "/new-page",
+      "permanent": true
+    }
   ]
 }
