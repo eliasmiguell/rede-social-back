@@ -13,7 +13,7 @@ import conversationRouter from './routes/conversations.js';
 import messageRouter from './routes/message.js'
 import notificationRouter from './routes/notification.js'
 import cookieParser from 'cookie-parser';
-import path from 'path';
+
 const port = process.env.PORT
 const app = express();
 const corsOptions = {
