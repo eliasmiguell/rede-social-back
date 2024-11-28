@@ -14,7 +14,7 @@ import messageRouter from './routes/message.js'
 import notificationRouter from './routes/notification.js'
 import cookieParser from 'cookie-parser';
 
-const port = process.env.PORT
+const port = process.env.PORT || 8000;
 const app = express();
 const corsOptions = {
   origin:'http://localhost:3000',
@@ -48,5 +48,5 @@ app.use('/api/notifications/', notificationRouter);
 
 
 app.listen(port, ()=>{
-  console.log(`Servido esta no ar no enderesso http://localhost:${port}`)
+  console.log(`Server is running on port ${port}`);
 })
