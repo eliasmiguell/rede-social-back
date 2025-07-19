@@ -19,7 +19,7 @@ import { runSeeders } from './seeders/seedRunner.js';
 const port = process.env.PORT || 8000;
 const app = express();
 const corsOptions = {
-  origin:['http://localhost:3000', 'http://localhost:3001'],
+  origin:['https://front-end-redes-sociais-sy53.vercel.app', 'http://localhost:3000'],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   allowedHeaders:[
