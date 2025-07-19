@@ -5,7 +5,7 @@ export const getNotification = async (req, res)=>{
   const { id_user } = req.query;
 
   if (!id_user || isNaN(id_user)) {
-    return res.status(400).json({ message: "follower_id inválido" });
+    return res.status(400).json({ message: "id_user inválido" });
   }
   try {
  
@@ -21,8 +21,8 @@ export const getNotification = async (req, res)=>{
 
     
   } catch (error) {
-      console.error("Erro ao mostrar os seguidores:", error);  
-    return res.status(500).json({ message: "Ocorreu um ao mostrar os seguidores. Por favor, tente novamente mais tarde." });
+      console.error("Erro ao mostrar as notificações:", error);  
+    return res.status(500).json({ message: "Ocorreu um erro ao mostrar as notificações. Por favor, tente novamente mais tarde." });
   }
 }
 

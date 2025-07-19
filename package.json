@@ -7,7 +7,12 @@
     "node": "22.x"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "migrate": "node migrations/migrationRunner.js",
+    "migrate:status": "node migrations/checkMigrations.js",
+    "seed": "node seeders/seedRunner.js",
+    "seed:status": "node seeders/checkSeeders.js",
+    "dev": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",

@@ -54,8 +54,8 @@ export const login = async (req, res) => {
 
     const refreshToken = jwt.sign(
       {
-        exp: Math.floor(Date.now() / 100) + 24 * 60 * 60,
-        id: user[0].password,
+        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+        id: user[0].id,
       },
       process.env.REFRESH,
       { algorithm: "HS256" }
@@ -63,19 +63,31 @@ export const login = async (req, res) => {
 
     const token = jwt.sign(
       {
-        exp: Math.floor(Date.now() / 100) + 3600,
-        id: user[0].password,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        id: user[0].id,
       },
       process.env.TOKEN,
       { algorithm: "HS256" }
     );
 
-    delete user.password;
+    const userWithoutPassword = { ...user[0] };
+    delete userWithoutPassword.password;
+    
     return res
-      .cookie('accessToken', token, { httpOnly: true })
-      .cookie('refreshToken', refreshToken, { httpOnly: true })
+      .cookie('accessToken', token, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      })
+      .cookie('refreshToken', refreshToken, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      })
       .status(200)
-      .json({ message: "Usuário logado com sucesso!", user });
+      .json({ message: "Usuário logado com sucesso!", user: userWithoutPassword });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Ocorreu algum erro no servidor, tente novamente mais tarde!" });
@@ -91,38 +103,64 @@ export const logout = (req, res) => {
 };
 
 export const refresh = async (req, res) => {
-  const authHeader = req.headers.cookie?.split("; ")[1];
-  const refresh = authHeader && authHeader.split("=")[1];
-
-  const tokenStruct = refresh.split('.')[1];
-  const payload = atob(tokenStruct);
-
   try {
-    const refreshToken = jwt.sign(
+    const cookies = req.headers.cookie;
+    if (!cookies) {
+      return res.status(400).json({ message: "Token invalido" });
+    }
+
+    const cookieArray = cookies.split(';');
+    let refreshToken = null;
+    
+    for (const cookie of cookieArray) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'refreshToken') {
+        refreshToken = value;
+        break;
+      }
+    }
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Token invalido" });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH);
+    
+    const newRefreshToken = jwt.sign(
       {
-        exp: Math.floor(Date.now() / 100) + 24 * 60 * 60,
-        id: JSON.parse(payload).id,
+        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+        id: decoded.id,
       },
       process.env.REFRESH,
       { algorithm: "HS256" }
     );
 
-    const token = jwt.sign(
+    const newToken = jwt.sign(
       {
-        exp: Math.floor(Date.now() / 100) + 3600,
-        id: JSON.parse(payload).id,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        id: decoded.id,
       },
       process.env.TOKEN,
       { algorithm: "HS256" }
     );
 
     return res
-      .cookie('accessToken', token, { httpOnly: true })
-      .cookie('refreshToken', refreshToken, { httpOnly: true })
+      .cookie('accessToken', newToken, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      })
+      .cookie('refreshToken', newRefreshToken, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      })
       .status(200)
       .json({ message: "Token atualizado com sucesso!" });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Ocorreu algum erro no servidor, tente novamente mais tarde!" });
+    return res.status(400).json({ message: "Token invalido" });
   }
 };

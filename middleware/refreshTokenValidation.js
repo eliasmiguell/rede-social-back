@@ -1,18 +1,32 @@
 import jwt from 'jsonwebtoken'
 
-export const  checkRefreshToken =(req,res, next)=>{
-  const authHeader = req.headers.cookie?.split("; ")[1]
-  const refresh = authHeader && authHeader.split('=')[1]
-
-  if(refresh){
-    try {
-      jwt.verify(refresh, process.env.REFRESH)
-      next()
-    } catch (err) {
-      console.log(err)
-      res.status(400).json({message: "Token invalido"})
+export const checkRefreshToken = (req, res, next) => {
+  try {
+    const cookies = req.headers.cookie;
+    if (!cookies) {
+      return res.status(401).json({ message: "Acesso negado." });
     }
-  }else{
-    return res.status(401).json({masseg:"Acesso negado."})
+
+    const cookieArray = cookies.split(';');
+    let refreshToken = null;
+    
+    for (const cookie of cookieArray) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'refreshToken') {
+        refreshToken = value;
+        break;
+      }
+    }
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Acesso negado." });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH);
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ message: "Token invalido" });
   }
 }

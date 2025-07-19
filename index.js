@@ -13,11 +13,13 @@ import conversationRouter from './routes/conversations.js';
 import messageRouter from './routes/message.js'
 import notificationRouter from './routes/notification.js'
 import cookieParser from 'cookie-parser';
+import { runMigrations } from './migrations/migrationRunner.js';
+import { runSeeders } from './seeders/seedRunner.js';
 
 const port = process.env.PORT || 8000;
 const app = express();
 const corsOptions = {
-  origin:'http://localhost:3000',
+  origin:['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   allowedHeaders:[
@@ -47,6 +49,25 @@ app.use('/api/notifications/', notificationRouter);
 
 
 
-app.listen(port, ()=>{
-  console.log(`Server is running on port ${port}`);
-})
+// Função para inicializar o servidor
+const startServer = async () => {
+  try {
+    // Executa as migrations antes de iniciar o servidor
+    console.log('🔄 Executando migrations do banco de dados...');
+    await runMigrations();
+    
+    // Executa os seeders para criar dados de teste
+    console.log('🌱 Executando seeders para dados de teste...');
+    await runSeeders();
+    
+    // Inicia o servidor
+    app.listen(port, () => {
+      console.log(`🚀 Server is running on port ${port}`);
+    });
+  } catch (error) {
+    console.error('💥 Erro ao inicializar o servidor:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
