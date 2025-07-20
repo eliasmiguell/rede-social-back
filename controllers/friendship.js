@@ -82,12 +82,33 @@ export const acceptFriendshipRequest = async (req, res)=>{
       return res.status(404).json({ message: 'Solicitação não encontrada ou já foi processada.' });
     }
 
-    // Aceitar a solicitação
+    // Aceitar a solicitação original
     await db`
       UPDATE friendship 
       SET status = 'accepted' 
       WHERE follower_id = ${follower_id} AND followed_id = ${followed_id}
     `;
+
+    // Criar conexão mútua (quem aceitou também segue quem enviou a solicitação)
+    const mutualConnection = await db`
+      SELECT id FROM friendship 
+      WHERE follower_id = ${followed_id} AND followed_id = ${follower_id}
+    `;
+
+    if (mutualConnection.length === 0) {
+      // Criar nova conexão mútua
+      await db`
+        INSERT INTO friendship(follower_id, followed_id, status) 
+        VALUES(${followed_id}, ${follower_id}, 'accepted')
+      `;
+    } else {
+      // Atualizar conexão existente para aceita
+      await db`
+        UPDATE friendship 
+        SET status = 'accepted' 
+        WHERE follower_id = ${followed_id} AND followed_id = ${follower_id}
+      `;
+    }
 
     // Buscar informações do usuário que aceitou
     const followedUser = await db`
@@ -143,7 +164,8 @@ export const deleteFriendship = async (req, res)=>{
   const {follower_id, followed_id}=req.query;
 
   try {
-    await db`DELETE FROM friendship WHERE follower_id=${follower_id} AND followed_id=${followed_id} `;
+    // Remover a conexão em ambas as direções
+    await db`DELETE FROM friendship WHERE (follower_id=${follower_id} AND followed_id=${followed_id}) OR (follower_id=${followed_id} AND followed_id=${follower_id})`;
    return res.status(200).json({message: 'Você não está mais seguindo esse usuário.'})
   } catch (error) {
     console.error("Erro ao deixar de seguir usuário:", error);  
