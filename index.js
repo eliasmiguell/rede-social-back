@@ -15,9 +15,18 @@ import notificationRouter from './routes/notification.js'
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/migrationRunner.js';
 import { runSeeders } from './seeders/seedRunner.js';
+import path from 'path'; // ← Adicione esta linha
+import { fileURLToPath } from 'url';
 
 const port = process.env.PORT || 8000;
 const app = express();
+
+
+// Para ES modules - obtém o diretório atual
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'upload')));
 const corsOptions = {
   origin:['https://front-end-redes-sociais-sy53.vercel.app', 'http://localhost:3000'],
   credentials: true,
