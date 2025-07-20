@@ -21,6 +21,35 @@ import { fileURLToPath } from 'url';
 const port = process.env.PORT || 8000;
 const app = express();
 
+// Rate limiting simples
+const requestCounts = new Map();
+
+const rateLimit = (req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const windowMs = 60000; // 1 minuto
+  const maxRequests = 100; // máximo 100 requisições por minuto
+
+  if (!requestCounts.has(ip)) {
+    requestCounts.set(ip, { count: 1, resetTime: now + windowMs });
+  } else {
+    const userRequests = requestCounts.get(ip);
+    if (now > userRequests.resetTime) {
+      userRequests.count = 1;
+      userRequests.resetTime = now + windowMs;
+    } else {
+      userRequests.count++;
+    }
+
+    if (userRequests.count > maxRequests) {
+      return res.status(429).json({ 
+        message: 'Muitas requisições. Tente novamente em alguns minutos.' 
+      });
+    }
+  }
+
+  next();
+};
 
 // Para ES modules - obtém o diretório atual
 const __filename = fileURLToPath(import.meta.url);
@@ -34,8 +63,10 @@ const corsOptions = {
   allowedHeaders:[
     "Content-Type",
     'Authorization',
-    "Acess-Control-Allow-Credentials"
-  ]
+    "Access-Control-Allow-Credentials",
+    "X-Requested-With"
+  ],
+  optionsSuccessStatus: 200
 };
 
 
@@ -44,6 +75,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions))
 app.use(express.urlencoded({extended:false}))
 app.use(cookieParser())
+app.use(rateLimit); // Aplica rate limiting
 app.use('/api/users/', userRouter);
 app.use('/api/auth/', authRouter);
 app.use('/api/post/', postRouter);

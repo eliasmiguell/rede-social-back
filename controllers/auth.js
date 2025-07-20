@@ -96,8 +96,18 @@ export const login = async (req, res) => {
 
 export const logout = (req, res) => {
   return res
-    .clearCookie("accessToken", { secure: true, sameSite: "none" })
-    .clearCookie("refreshToken", { secure: true, sameSite: "none" })
+    .clearCookie("accessToken", { 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: '/'
+    })
+    .clearCookie("refreshToken", { 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: '/'
+    })
     .status(200)
     .json({ message: "Logout efetuado com sucesso." });
 };

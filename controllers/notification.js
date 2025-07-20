@@ -73,6 +73,53 @@ export const markAllAsRead = async (req, res) => {
   }
 }
 
+// Marcar notificações de mensagem como lidas
+export const markMessageNotificationsAsRead = async (req, res) => {
+  const { user_id, from_user_id, conversation_id } = req.body;
+
+  if (!user_id || isNaN(user_id)) {
+    return res.status(400).json({ message: "user_id inválido" });
+  }
+
+  try {
+    let query = db`
+      UPDATE notifications 
+      SET is_read = TRUE 
+      WHERE user_id = ${user_id} AND notification_type = 'message'
+    `;
+
+    // Se fornecido from_user_id, filtrar por usuário específico
+    if (from_user_id && !isNaN(from_user_id)) {
+      query = db`
+        UPDATE notifications 
+        SET is_read = TRUE 
+        WHERE user_id = ${user_id} 
+          AND from_user_id = ${from_user_id} 
+          AND notification_type = 'message'
+      `;
+    }
+
+    // Se fornecido conversation_id, filtrar por conversa específica
+    if (conversation_id && !isNaN(conversation_id)) {
+      query = db`
+        UPDATE notifications 
+        SET is_read = TRUE 
+        WHERE user_id = ${user_id} 
+          AND reference_id = ${conversation_id} 
+          AND notification_type = 'message'
+      `;
+    }
+
+    await query;
+    
+    return res.status(200).json({ message: "Notificações de mensagem marcadas como lidas" });
+    
+  } catch (error) {
+    console.error("Erro ao marcar notificações de mensagem como lidas:", error);
+    return res.status(500).json({ message: "Ocorreu um erro ao marcar notificações como lidas." });
+  }
+}
+
 // Criar notificação (função utilitária para outros controllers)
 export const createNotification = async (user_id, from_user_id, notification_type, reference_id, message) => {
   try {

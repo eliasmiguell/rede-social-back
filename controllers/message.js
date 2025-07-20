@@ -1,4 +1,5 @@
 import { db } from '../connect.js'
+import { createNotification } from './notification.js'
 
 
 export const sendMessage = async (req, res) => {
@@ -33,9 +34,39 @@ export const sendMessage = async (req, res) => {
 
     // Insere a mensagem na conversa correspondente
     await db`
-      INSERT INTO messages (conversations, sender_id, recipient_id, messages)
-      VALUES (${conversationId}, ${sender_id}, ${recipient_id}, ${messages});
+      INSERT INTO messages (conversations, sender_id, recipient_id, messages, sent_at)
+      VALUES (${conversationId}, ${sender_id}, ${recipient_id}, ${messages}, NOW());
     `;
+
+    // Buscar o nome do usuário que enviou a mensagem para a notificação
+    const senderUser = await db`
+      SELECT username FROM users WHERE id = ${sender_id}
+    `;
+
+    // Criar notificação para o destinatário
+    if (senderUser.length > 0) {
+      // Verificar se já existe uma notificação não lida da mesma conversa
+      const existingNotification = await db`
+        SELECT id FROM notifications 
+        WHERE user_id = ${recipient_id} 
+          AND from_user_id = ${sender_id} 
+          AND notification_type = 'message' 
+          AND reference_id = ${conversationId}
+          AND is_read = FALSE
+      `;
+
+      // Só criar nova notificação se não existir uma não lida da mesma conversa
+      if (existingNotification.length === 0) {
+        const notificationMessage = `${senderUser[0].username} enviou uma mensagem para você`;
+        await createNotification(
+          recipient_id,
+          sender_id,
+          'message',
+          conversationId,
+          notificationMessage
+        );
+      }
+    }
 
     return res.status(201).json({ message: 'Mensagem enviada com sucesso.', conversationId });
   } catch (error) {
@@ -52,8 +83,18 @@ if (!conversationsId || isNaN(conversationsId)) {
 
 try {
   
-  const data = await db`SELECT messages .*, users.username, users.userimg 
-  FROM messages JOIN users ON users.id= messages.sender_id
+  const data = await db`SELECT 
+    messages.id,
+    messages.conversations,
+    messages.sender_id,
+    messages.recipient_id,
+    messages.messages,
+    messages.is_read,
+    EXTRACT(EPOCH FROM messages.sent_at) as sent_at,
+    users.username,
+    users.userimg 
+  FROM messages 
+  JOIN users ON users.id = messages.sender_id
   WHERE messages.conversations = ${conversationsId} 
   ORDER BY messages.sent_at ASC`;
   
@@ -71,12 +112,34 @@ try {
 export const markAllMessagesAsRead = async (req, res) => {
   const { conversation_id, user_id } = req.query;
 
-
   if (!conversation_id || !user_id) {
     return res.status(400).json({ message: 'IDs de conversa e usuário são obrigatórios.' });
   }
 
+  // Validação dos parâmetros
+  if (isNaN(conversation_id) || isNaN(user_id)) {
+    return res.status(400).json({ message: 'IDs devem ser números válidos.' });
+  }
+
   try {
+    // Verifica se a conversa existe
+    const conversationExists = await db`
+      SELECT id FROM conversations WHERE id = ${conversation_id}
+    `;
+
+    if (conversationExists.length === 0) {
+      return res.status(404).json({ message: 'Conversa não encontrada.' });
+    }
+
+    // Verifica se o usuário existe
+    const userExists = await db`
+      SELECT id FROM users WHERE id = ${user_id}
+    `;
+
+    if (userExists.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+
     const result = await db`
       UPDATE messages
       SET is_read = TRUE
@@ -85,10 +148,16 @@ export const markAllMessagesAsRead = async (req, res) => {
         AND is_read = FALSE;
     `;
    
-    return res.status(200).json({ message: `${result.count} mensagens marcadas como lidas.` });
+    return res.status(200).json({ 
+      message: `${result.count} mensagens marcadas como lidas.`,
+      updatedCount: result.count 
+    });
   } catch (error) {
     console.error('Erro ao marcar mensagens como lidas:', error);
-    return res.status(500).json({ message: 'Erro interno do servidor ao marcar mensagens como lidas.' });
+    return res.status(500).json({ 
+      message: 'Erro interno do servidor ao marcar mensagens como lidas.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 export const deletemessage = async (req, res)=>{

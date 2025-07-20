@@ -63,11 +63,18 @@ export const getUserConversation = async (req, res) => {
              CASE 
                WHEN conversations.user1_id = ${userid} THEN users2.userimg 
                ELSE users1.userimg 
-             END AS other_userimg
+             END AS other_userimg,
+             CASE 
+               WHEN conversations.user1_id = ${userid} THEN conversations.user2_id 
+               ELSE conversations.user1_id 
+             END AS other_user_id
       FROM conversations
       LEFT JOIN users AS users1 ON users1.id = conversations.user1_id
       LEFT JOIN users AS users2 ON users2.id = conversations.user2_id
-      WHERE conversations.user1_id = ${userid} OR conversations.user2_id = ${userid};
+      LEFT JOIN friendship AS f1 ON (f1.follower_id = ${userid} AND f1.followed_id = conversations.user2_id AND f1.status = 'accepted')
+      LEFT JOIN friendship AS f2 ON (f2.follower_id = ${userid} AND f2.followed_id = conversations.user1_id AND f2.status = 'accepted')
+      WHERE (conversations.user1_id = ${userid} OR conversations.user2_id = ${userid})
+        AND (f1.follower_id IS NOT NULL OR f2.follower_id IS NOT NULL);
     `;
 
     return res.status(200).json({ data });
