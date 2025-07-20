@@ -11,11 +11,10 @@ const __dirname = path.dirname(__filename);
 // Se está em controllers/, vai para ../public/upload
 const uploadDir = path.resolve(__dirname, '..', 'public', 'upload');
 
-console.log('Diretório de upload:', uploadDir); // Debug
 
 // Verifica se o diretório existe, se não existir, cria
 if (!fs.existsSync(uploadDir)) {
-  console.log('Criando diretório:', uploadDir);
+ 
   fs.mkdirSync(uploadDir, { recursive: true });
 } else {
   console.log('Diretório já existe:', uploadDir);
@@ -36,14 +35,13 @@ const storage = multer.diskStorage({
     const name = path.basename(file.originalname, ext)
       .replace(/[^a-zA-Z0-9]/g, '_'); // Remove caracteres especiais
     const filename = Date.now() + '_' + name + ext;
-    console.log('Nome do arquivo:', filename);
+    
     cb(null, filename);
   }
 });
 
 // Adiciona validação de tipos de arquivo
 const fileFilter = (req, file, cb) => {
-  console.log('Verificando tipo de arquivo:', file.mimetype); // Debug
   // Aceita apenas imagens
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
