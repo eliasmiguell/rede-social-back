@@ -77,13 +77,13 @@ export const login = async (req, res) => {
       .cookie('accessToken', token, { 
         httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/'
       })
       .cookie('refreshToken', refreshToken, { 
         httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/'
       })
       .status(200)
@@ -148,13 +148,13 @@ export const refresh = async (req, res) => {
       .cookie('accessToken', newToken, { 
         httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/'
       })
       .cookie('refreshToken', newRefreshToken, { 
         httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/'
       })
       .status(200)
