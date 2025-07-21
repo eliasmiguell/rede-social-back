@@ -1,5 +1,7 @@
 import { db } from '../connect.js'
 import { createNotification } from './notification.js'
+import { io } from '../index.js';
+import nodemailer from 'nodemailer';
 
 
 export const sendMessage = async (req, res) => {
@@ -38,13 +40,50 @@ export const sendMessage = async (req, res) => {
       VALUES (${conversationId}, ${sender_id}, ${recipient_id}, ${messages}, NOW());
     `;
 
+    // Emitir evento de nova mensagem via Socket.IO
+    io.to(String(recipient_id)).emit('nova_mensagem', {
+      conversationId,
+      sender_id,
+      recipient_id,
+      messages,
+      sent_at: new Date().toISOString()
+    });
+
     // Buscar o nome do usuário que enviou a mensagem para a notificação
     const senderUser = await db`
+      SELECT username, email FROM users WHERE id = ${sender_id}
+    `;
+    // Buscar o e-mail do destinatário
+    const recipientUser = await db`
+      SELECT email FROM users WHERE id = ${recipient_id}
+    `;
+
+    // Enviar e-mail para o destinatário
+    if (recipientUser.length > 0 && senderUser.length > 0) {
+      // Configure o transporter do Nodemailer (exemplo com Gmail, troque para seu provedor real)
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER, // defina no .env
+          pass: process.env.EMAIL_PASS  // defina no .env
+        }
+      });
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: recipientUser[0].email,
+        subject: `Nova mensagem - Projeto Rede Social`,
+        text: `Você recebeu uma nova mensagem de ${senderUser[0].username} na Projeto Rede Social: ${messages}\nAcesse: https://front-end-redes-sociais-sy53.vercel.app`,
+        html: `<p>Você recebeu uma nova mensagem de <b>${senderUser[0].username}</b> na Projeto Rede Social:</p><p>${messages}</p><p><a href="https://front-end-redes-sociais-sy53.vercel.app">Acesse sua conta</a></p>`
+      });
+    }
+
+    // Buscar o nome do usuário que enviou a mensagem para a notificação
+    const senderUserForNotification = await db`
       SELECT username FROM users WHERE id = ${sender_id}
     `;
 
     // Criar notificação para o destinatário
-    if (senderUser.length > 0) {
+    if (senderUserForNotification.length > 0) {
       // Verificar se já existe uma notificação não lida da mesma conversa
       const existingNotification = await db`
         SELECT id FROM notifications 
@@ -57,7 +96,7 @@ export const sendMessage = async (req, res) => {
 
       // Só criar nova notificação se não existir uma não lida da mesma conversa
       if (existingNotification.length === 0) {
-        const notificationMessage = `${senderUser[0].username} enviou uma mensagem para você`;
+        const notificationMessage = `${senderUserForNotification[0].username} enviou uma mensagem para você`;
         await createNotification(
           recipient_id,
           sender_id,

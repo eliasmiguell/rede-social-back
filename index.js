@@ -17,6 +17,8 @@ import { runMigrations } from './migrations/migrationRunner.js';
 import { runSeeders } from './seeders/seedRunner.js';
 import path from 'path'; // ← Adicione esta linha
 import { fileURLToPath } from 'url';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 const port = process.env.PORT || 8000;
 const app = express();
@@ -88,7 +90,27 @@ app.use('/api/conversation/', conversationRouter);
 app.use('/api/messagens/', messageRouter);
 app.use('/api/notifications/', notificationRouter);
 
+// Cria o servidor HTTP manualmente para usar com o Socket.IO
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: ['https://front-end-redes-sociais-sy53.vercel.app', 'http://localhost:3000'],
+    credentials: true
+  }
+});
 
+// Após a criação do io
+io.on('connection', (socket) => {
+  // Espera o front-end informar o ID do usuário após conectar
+  socket.on('registrar_usuario', (userId) => {
+    if (userId) {
+      socket.join(String(userId));
+    }
+  });
+});
+
+// Exporta o io para ser usado nos controllers
+export { io };
 
 // Função para inicializar o servidor
 const startServer = async () => {
@@ -101,8 +123,8 @@ const startServer = async () => {
     console.log('🌱 Executando seeders para dados de teste...');
     await runSeeders();
     
-    // Inicia o servidor
-    app.listen(port, () => {
+    // Inicia o servidor com Socket.IO
+    server.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
     });
   } catch (error) {
